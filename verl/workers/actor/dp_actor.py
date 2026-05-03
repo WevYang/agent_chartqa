@@ -24,7 +24,6 @@ from einops import rearrange
 from ray.experimental.tqdm_ray import tqdm
 from torch import nn
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from transformers.modeling_flash_attention_utils import index_first_axis, pad_input, unpad_input
 
 from ...protocol import DataProto
 from ...trainer import core_algos
@@ -33,6 +32,14 @@ from ...utils.py_functional import append_to_dict
 from ...utils.ulysses import gather_outputs_and_unpad, ulysses_pad_and_slice_inputs
 from .base import BasePPOActor
 from .config import ActorConfig
+
+try:
+    from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input
+except ImportError:
+    try:
+        from transformers.modeling_flash_attention_utils import index_first_axis, pad_input, unpad_input
+    except ImportError:
+        index_first_axis = pad_input = unpad_input = None
 
 
 __all__ = ["DataParallelPPOActor"]
@@ -79,6 +86,8 @@ class DataParallelPPOActor(BasePPOActor):
                 )
 
         if self.config.padding_free:
+            if any(fn is None for fn in (index_first_axis, pad_input, unpad_input)):
+                raise ImportError("padding_free=True requires flash-attn or compatible padding utilities.")
             input_ids_rmpad, indices, *_ = unpad_input(
                 input_ids.unsqueeze(-1), attention_mask
             )  # input_ids_rmpad (total_nnz, ...)

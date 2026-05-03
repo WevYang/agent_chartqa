@@ -15,6 +15,7 @@
 The main entry point to run the PPO algorithm
 """
 
+import os
 from typing import Literal, Optional, Union
 
 import numpy as np
@@ -34,6 +35,7 @@ from transformers import (
     GenerationConfig,
     PreTrainedModel,
 )
+from transformers.utils import is_flash_attn_2_available
 from transformers.modeling_utils import no_init_weights
 
 from ..models.monkey_patch import apply_ulysses_patch
@@ -193,12 +195,17 @@ class FSDPWorker(Worker):
         else:
             auto_class = AutoModelForCausalLM
 
+        attn_implementation = os.environ.get("VERL_ATTN_IMPLEMENTATION")
+        if attn_implementation is None:
+            attn_implementation = "flash_attention_2" if is_flash_attn_2_available() else "sdpa"
+        self.print_rank0(f"Using attention implementation: {attn_implementation}")
+
         if (not fsdp_config.enable_rank0_init) or self.device_mesh.get_local_rank("fsdp") == 0:
             model = auto_class.from_pretrained(
                 model_config.model_path,
                 config=self.model_config,
                 torch_dtype=torch_dtype,
-                attn_implementation="flash_attention_2",
+                attn_implementation=attn_implementation,
                 device_map="cpu" if fsdp_config.enable_rank0_init else "cuda",
                 low_cpu_mem_usage=True,
                 trust_remote_code=model_config.trust_remote_code,
@@ -208,7 +215,7 @@ class FSDPWorker(Worker):
                 model = auto_class.from_config(
                     self.model_config,
                     torch_dtype=torch_dtype,
-                    attn_implementation="flash_attention_2",
+                    attn_implementation=attn_implementation,
                     trust_remote_code=model_config.trust_remote_code,
                 )
 

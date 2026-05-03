@@ -22,11 +22,15 @@ cd ~/rivermind-data/agent_chartqa
 
 当前依赖写在 `requirements.txt` 中，核心组件包括：
 
-- `torch==2.5.1+cu118`
+- `torch==2.5.1`
 - `vllm==0.7.3`
-- `flash_attn==2.6.3`
+- `xformers==0.0.28.post3`
 - `accelerate==1.6.0`
 - `pyarrow==22.0.0`
+- `ray==2.40.0`
+- `transformers==4.49.0`
+- `datasets==3.2.0`
+- `tensorboard==2.20.0`
 
 安装依赖：
 

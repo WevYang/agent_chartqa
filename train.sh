@@ -43,6 +43,9 @@ python3 -m verl.trainer.main \
     data.train_files="${TRAIN_FILES}" \
     data.val_files="${VAL_FILES}" \
     worker.actor.model.model_path="${MODEL_PATH}" \
+    worker.actor.padding_free=false \
+    worker.critic.padding_free=false \
+    worker.ref.padding_free=false \
     worker.rollout.tensor_parallel_size="${TP_SIZE}" \
     trainer.experiment_name="${EXPERIMENT_NAME}" \
     trainer.n_gpus_per_node="${NUM_GPUS_PER_NODE}" \

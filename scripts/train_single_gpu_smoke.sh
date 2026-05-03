@@ -23,6 +23,7 @@ export CUDA_DEVICE_ORDER="${CUDA_DEVICE_ORDER:-PCI_BUS_ID}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export NCCL_P2P_DISABLE="${NCCL_P2P_DISABLE:-1}"
 export VLLM_ATTENTION_BACKEND="${VLLM_ATTENTION_BACKEND:-XFORMERS}"
+export RAY_memory_monitor_refresh_ms="${RAY_memory_monitor_refresh_ms:-0}"
 
 mkdir -p \
   "$TMPDIR" \
@@ -43,12 +44,25 @@ MAX_STEPS="${MAX_STEPS:-1}"
 
 python3 -m verl.trainer.main \
     config=examples/config.yaml \
+    algorithm.disable_kl=true \
+    algorithm.use_kl_loss=false \
+    algorithm.kl_coef=0 \
     data.train_files="${TRAIN_FILES}" \
     data.val_files="${VAL_FILES}" \
+    data.max_prompt_length=4096 \
+    data.max_response_length=128 \
     worker.actor.model.model_path="${MODEL_PATH}" \
+    worker.actor.padding_free=false \
+    worker.actor.use_torch_compile=false \
+    worker.critic.padding_free=false \
+    worker.ref.padding_free=false \
     worker.rollout.tensor_parallel_size=1 \
-    worker.rollout.n=1 \
-    worker.rollout.gpu_memory_utilization=0.2 \
+    worker.rollout.n=2 \
+    worker.rollout.gpu_memory_utilization=0.35 \
+    worker.rollout.max_model_len=5120 \
+    worker.rollout.max_num_batched_tokens=5120 \
+    worker.rollout.limit_images=1 \
+    worker.rollout.enforce_eager=true \
     trainer.experiment_name="${EXPERIMENT_NAME}" \
     trainer.n_gpus_per_node=1 \
     trainer.max_steps="${MAX_STEPS}" \
@@ -58,8 +72,10 @@ python3 -m verl.trainer.main \
     trainer.save_freq=-1 \
     trainer.logger='[console]' \
     worker.actor.global_batch_size=1 \
-    worker.actor.micro_batch_size_per_device_for_update=1 \
+    worker.actor.micro_batch_size_per_device_for_update=2 \
     worker.actor.micro_batch_size_per_device_for_experience=1 \
+    worker.actor.optim.strategy=adamw_bf16 \
+    worker.actor.fsdp.enable_cpu_offload=true \
     data.rollout_batch_size=1 \
     data.val_batch_size=1 \
     trainer.save_checkpoint_path=./checkpoints/"${EXPERIMENT_NAME}" \
