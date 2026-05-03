@@ -159,16 +159,30 @@ class DataParallelPPOActor(BasePPOActor):
 
     def _optimizer_step(self) -> torch.Tensor:
         if isinstance(self.actor_module, FSDP):
+            if self.rank == 0:
+                print("Actor before clip_grad_norm")
             grad_norm = self.actor_module.clip_grad_norm_(self.config.max_grad_norm)
         else:
+            if self.rank == 0:
+                print("Actor before clip_grad_norm")
             grad_norm = nn.utils.clip_grad_norm_(self.actor_module.parameters(), max_norm=self.config.max_grad_norm)
+        if self.rank == 0:
+            print("Actor after clip_grad_norm")
 
         if not torch.isfinite(grad_norm):
             print("Gradient norm is not finite. Skip update.")
         else:
+            if self.rank == 0:
+                print("Actor before optimizer.step")
             self.actor_optimizer.step()
+            if self.rank == 0:
+                print("Actor after optimizer.step")
 
+        if self.rank == 0:
+            print("Actor before optimizer.zero_grad")
         self.actor_optimizer.zero_grad()
+        if self.rank == 0:
+            print("Actor after optimizer.zero_grad")
         return grad_norm
 
     @torch.no_grad()
@@ -282,6 +296,8 @@ class DataParallelPPOActor(BasePPOActor):
 
                     loss = pg_loss / gradient_accumulation
                     loss.backward()
+                    if self.rank == 0:
+                        print("Actor backward complete")
 
                     batch_metrics = {
                         "actor/pg_loss": pg_loss.detach().item(),
@@ -293,6 +309,12 @@ class DataParallelPPOActor(BasePPOActor):
                     append_to_dict(metrics, batch_metrics)
 
                 grad_norm = self._optimizer_step()
+                if self.rank == 0:
+                    print("Actor optimizer step complete")
                 append_to_dict(metrics, {"actor/grad_norm": grad_norm.detach().item()})
+                if self.rank == 0:
+                    print("Actor grad norm recorded")
 
+        if self.rank == 0:
+            print("Leaving DataParallelPPOActor.update_policy")
         return metrics

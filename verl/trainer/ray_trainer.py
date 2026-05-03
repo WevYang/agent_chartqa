@@ -218,6 +218,8 @@ class RayPPOTrainer:
         self.config = config
         self.reward_fn = reward_fn
         self.val_reward_fn = val_reward_fn
+        self.disable_validation = os.environ.get("VERL_DISABLE_VALIDATION", "0") == "1"
+        self.disable_checkpoint_save = os.environ.get("VERL_DISABLE_CHECKPOINT_SAVE", "0") == "1"
 
         self.tool_parser = Parser()
 
@@ -1360,7 +1362,7 @@ class RayPPOTrainer:
 
         # perform validation before training
         # currently, we only support validation using the reward_function.
-        if self.val_reward_fn is not None and self.config.trainer.val_before_train:
+        if self.val_reward_fn is not None and not self.disable_validation and self.config.trainer.val_before_train:
             val_metrics = self._validate()
             self.logger.log(data=val_metrics, step=self.global_step)
             if self.config.trainer.val_only:
@@ -1435,6 +1437,7 @@ class RayPPOTrainer:
 
                     if (
                         self.val_reward_fn is not None
+                        and not self.disable_validation
                         and self.config.trainer.val_freq > 0
                         and self.global_step % self.config.trainer.val_freq == 0
                     ):
@@ -1622,7 +1625,11 @@ class RayPPOTrainer:
 
                         metrics.update(val_metrics)
 
-                    if self.config.trainer.save_freq > 0 and self.global_step % self.config.trainer.save_freq == 0:
+                    if (
+                        not self.disable_checkpoint_save
+                        and self.config.trainer.save_freq > 0
+                        and self.global_step % self.config.trainer.save_freq == 0
+                    ):
                         with timer("save_checkpoint", timing_raw):
                             print("saving checkpoint")
                             self._save_checkpoint()
@@ -1637,7 +1644,7 @@ class RayPPOTrainer:
                     self.logger.log(data=metrics, step=self.global_step)
 
         # perform validation after training
-        if self.val_reward_fn is not None:
+        if self.val_reward_fn is not None and not self.disable_validation:
             if (
                 val_metrics is None
                 or self.config.trainer.val_freq <= 0
@@ -1648,5 +1655,7 @@ class RayPPOTrainer:
 
             print(f"Final validation metrics: {convert_dict_to_str(val_metrics)}")
 
-        if self.config.trainer.save_freq <= 0 or self.global_step % self.config.trainer.save_freq != 0:
+        if not self.disable_checkpoint_save and (
+            self.config.trainer.save_freq <= 0 or self.global_step % self.config.trainer.save_freq != 0
+        ):
             self._save_checkpoint()

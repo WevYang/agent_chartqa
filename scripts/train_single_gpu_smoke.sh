@@ -18,12 +18,19 @@ export WANDB_DIR="${WANDB_DIR:-$RIVERMIND_DATA_ROOT/wandb}"
 export SWANLAB_DIR="${SWANLAB_DIR:-$RIVERMIND_DATA_ROOT/swanlab}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$RIVERMIND_DATA_ROOT/.cache}"
 export WANDB_MODE="${WANDB_MODE:-disabled}"
+export PYTHONFAULTHANDLER="${PYTHONFAULTHANDLER:-1}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export CUDA_LAUNCH_BLOCKING="${CUDA_LAUNCH_BLOCKING:-1}"
 export CUDA_DEVICE_ORDER="${CUDA_DEVICE_ORDER:-PCI_BUS_ID}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export NCCL_P2P_DISABLE="${NCCL_P2P_DISABLE:-1}"
 export VLLM_ATTENTION_BACKEND="${VLLM_ATTENTION_BACKEND:-XFORMERS}"
 export RAY_memory_monitor_refresh_ms="${RAY_memory_monitor_refresh_ms:-0}"
+export VERL_SKIP_POST_UPDATE_OFFLOAD="${VERL_SKIP_POST_UPDATE_OFFLOAD:-1}"
+export VERL_ADAMW_FUSED="${VERL_ADAMW_FUSED:-0}"
+export VERL_ANYPRECISION_USE_KAHAN="${VERL_ANYPRECISION_USE_KAHAN:-0}"
+export VERL_DISABLE_VALIDATION="${VERL_DISABLE_VALIDATION:-1}"
+export VERL_DISABLE_CHECKPOINT_SAVE="${VERL_DISABLE_CHECKPOINT_SAVE:-1}"
 
 mkdir -p \
   "$TMPDIR" \
@@ -47,6 +54,7 @@ python3 -m verl.trainer.main \
     algorithm.disable_kl=true \
     algorithm.use_kl_loss=false \
     algorithm.kl_coef=0 \
+    algorithm.online_filtering=false \
     data.train_files="${TRAIN_FILES}" \
     data.val_files="${VAL_FILES}" \
     data.max_prompt_length=4096 \
@@ -75,7 +83,9 @@ python3 -m verl.trainer.main \
     worker.actor.micro_batch_size_per_device_for_update=2 \
     worker.actor.micro_batch_size_per_device_for_experience=1 \
     worker.actor.optim.strategy=adamw_bf16 \
-    worker.actor.fsdp.enable_cpu_offload=true \
+    worker.actor.fsdp.enable_cpu_offload=false \
+    worker.actor.offload.offload_params=true \
+    worker.actor.offload.offload_optimizer=false \
     data.rollout_batch_size=1 \
     data.val_batch_size=1 \
     trainer.save_checkpoint_path=./checkpoints/"${EXPERIMENT_NAME}" \

@@ -286,20 +286,31 @@ class FSDPWorker(Worker):
         print_gpu_memory_usage("After FSDP module init")
 
         if self._is_actor or self._is_critic:
+            adamw_fused = os.environ.get("VERL_ADAMW_FUSED", "1") == "1"
             if optim_config.strategy == "adamw":
                 self.optimizer = torch.optim.AdamW(
                     filter(lambda p: p.requires_grad, self.fsdp_module.parameters()),
                     lr=optim_config.lr,
                     betas=optim_config.betas,
                     weight_decay=optim_config.weight_decay,
-                    fused=True,
+                    fused=adamw_fused,
                 )
             elif optim_config.strategy == "adamw_bf16":
+                anyprecision_use_kahan = os.environ.get("VERL_ANYPRECISION_USE_KAHAN", "1") == "1"
+                anyprecision_momentum_dtype = os.environ.get("VERL_ANYPRECISION_MOMENTUM_DTYPE", "bfloat16")
+                anyprecision_variance_dtype = os.environ.get("VERL_ANYPRECISION_VARIANCE_DTYPE", "bfloat16")
+                anyprecision_compensation_dtype = os.environ.get(
+                    "VERL_ANYPRECISION_COMPENSATION_DTYPE", "bfloat16"
+                )
                 self.optimizer = AnyPrecisionAdamW(
                     filter(lambda p: p.requires_grad, self.fsdp_module.parameters()),
                     lr=optim_config.lr,
                     betas=optim_config.betas,
                     weight_decay=optim_config.weight_decay,
+                    use_kahan_summation=anyprecision_use_kahan,
+                    momentum_dtype=anyprecision_momentum_dtype,
+                    variance_dtype=anyprecision_variance_dtype,
+                    compensation_buffer_dtype=anyprecision_compensation_dtype,
                 )
             else:
                 raise NotImplementedError(f"Optimizer {optim_config.strategy} not supported.")
@@ -446,6 +457,7 @@ class FSDPWorker(Worker):
             data = self.ulysses_sharding_manager.preprocess_data(data=data)
             with Timer(name="update_policy", logger=None) as timer:
                 metrics = self.actor.update_policy(data=data)
+            self.print_rank0("Actor update_policy returned.")
 
             delta_time = timer.last
             global_num_tokens = data.meta_info["global_token_num"]
@@ -460,10 +472,12 @@ class FSDPWorker(Worker):
                 torch.cuda.max_memory_reserved() - self.rollout_sharding_manager.freed_bytes
             ) / (1024**3)
             metrics["perf/cpu_memory_used_gb"] = psutil.virtual_memory().used / (1024**3)
+            self.print_rank0("Actor performance metrics collected.")
 
             self.lr_scheduler.step()
             lr = self.lr_scheduler.get_last_lr()[0]
             metrics["actor/lr"] = lr
+            self.print_rank0("Actor scheduler step finished.")
 
             # Metrics should be in non_tensor_batch instead of meta_info, as DataProto not concat meta_info.
             output = DataProto(
@@ -471,14 +485,26 @@ class FSDPWorker(Worker):
                     key: np.array([value] if np.isscalar(value) else value) for key, value in metrics.items()
                 }
             )
+            self.print_rank0("Actor DataProto output constructed.")
 
-        if self._use_param_offload:
-            offload_fsdp_model(self.fsdp_module)
+        print_gpu_memory_usage("After actor update before post-offload")
+        skip_post_update_offload = os.environ.get("VERL_SKIP_POST_UPDATE_OFFLOAD", "0") == "1"
+        if skip_post_update_offload:
+            self.print_rank0("Skipping post-update actor/optimizer offload via VERL_SKIP_POST_UPDATE_OFFLOAD=1")
+        else:
+            if self._use_param_offload:
+                offload_fsdp_model(self.fsdp_module)
+                torch.cuda.synchronize()
+                print_gpu_memory_usage("After post-update actor model offload")
 
-        if self._use_optimizer_offload:
-            offload_fsdp_optimizer(optimizer=self.optimizer)
+            if self._use_optimizer_offload:
+                offload_fsdp_optimizer(optimizer=self.optimizer)
+                torch.cuda.synchronize()
+                print_gpu_memory_usage("After post-update actor optimizer offload")
 
+        self.print_rank0("Moving actor update output to CPU.")
         output = output.to("cpu")
+        self.print_rank0("Actor update output moved to CPU.")
         return output
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
