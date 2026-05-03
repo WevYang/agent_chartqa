@@ -34,6 +34,17 @@ cd ~/rivermind-data/agent_chartqa
 pip install -r requirements.txt
 ```
 
+如果你的系统盘空间紧张，建议把运行时缓存统一落到 `~/rivermind-data`。当前 `train.sh` 和新增的单卡脚本会默认设置这些目录：
+
+```bash
+TMPDIR=~/rivermind-data/tmp
+HF_HOME=~/rivermind-data/hf_home
+TORCH_HOME=~/rivermind-data/torch_home
+VLLM_CACHE_ROOT=~/rivermind-data/vllm_cache
+WANDB_DIR=~/rivermind-data/wandb
+SWANLAB_DIR=~/rivermind-data/swanlab
+```
+
 ## 数据准备
 
 仓库内已经包含：
@@ -103,6 +114,22 @@ bash train.sh
 checkpoints/mini_chartQA
 ```
 
+如果你当前只有单卡，先做一次 smoke 验证更稳妥：
+
+```bash
+conda activate orbit
+cd ~/rivermind-data/agent_chartqa
+bash scripts/train_single_gpu_smoke.sh
+```
+
+这个脚本默认：
+
+- 使用 `CUDA_VISIBLE_DEVICES=0`
+- 使用 `tensor_parallel_size=1`
+- 将 `trainer.max_steps` 设为 `1`
+- 关闭训练前验证和周期性保存
+- 仅保留 `console` logger，避免第一次跑链路时被外部日志平台卡住
+
 ## 常用覆盖方式
 
 如果你想切换 GPU 或实验名，可以直接在命令前覆盖环境变量：
@@ -133,6 +160,8 @@ bash train.sh
 - 训练日志配置为 `console` 和 `wandb`
 
 注意：`examples/config.yaml` 里的默认模型和 GPU 数与 `train.sh` 中覆盖后的运行参数不完全一致。实际执行时以 `train.sh` 传入的参数为准。
+
+另外，`datasets/*.parquet` 是本地生成产物，默认不建议提交到 GitHub；仓库中保留脚本和说明，数据按 README 步骤本地生成即可。
 
 ## 目录结构
 

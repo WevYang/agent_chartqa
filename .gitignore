@@ -253,6 +253,8 @@ fabric.properties
 outputs/
 checkpoints/
 wandb/
+datasets/*.parquet
+datasets_back/
 
 refocus_data
 data/*
