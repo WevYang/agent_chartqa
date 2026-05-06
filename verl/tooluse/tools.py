@@ -1,6 +1,85 @@
-import cv2, json
+import cv2, json, re
+from difflib import SequenceMatcher
 import numpy as np
 from PIL import Image, ImageDraw
+
+
+def _normalize_label(label):
+    text = str(label).strip().lower()
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _singularize_tokens(text):
+    tokens = []
+    for token in text.split():
+        if len(token) > 3 and token.endswith("s"):
+            token = token[:-1]
+        tokens.append(token)
+    return " ".join(tokens)
+
+
+def _resolve_focus_values(values_to_focus_on, all_bounding_boxes):
+    if not values_to_focus_on or not all_bounding_boxes:
+        return []
+
+    keys = list(all_bounding_boxes.keys())
+    normalized_to_key = {}
+    singular_to_key = {}
+    for key in keys:
+        normalized = _normalize_label(key)
+        normalized_to_key.setdefault(normalized, key)
+        singular_to_key.setdefault(_singularize_tokens(normalized), key)
+
+    resolved = []
+    for value in values_to_focus_on:
+        if value in all_bounding_boxes:
+            resolved.append(value)
+            continue
+
+        normalized = _normalize_label(value)
+        singular = _singularize_tokens(normalized)
+        match = normalized_to_key.get(normalized) or singular_to_key.get(singular)
+
+        if match is None:
+            best_key = None
+            best_score = 0.0
+            value_tokens = set(singular.split())
+            for key in keys:
+                candidate = _normalize_label(key)
+                candidate_singular = _singularize_tokens(candidate)
+                candidate_tokens = set(candidate_singular.split())
+                score = max(
+                    SequenceMatcher(None, normalized, candidate).ratio(),
+                    SequenceMatcher(None, singular, candidate_singular).ratio(),
+                )
+                if normalized and (normalized in candidate or candidate in normalized):
+                    score = max(score, 0.88)
+                if singular and (singular in candidate_singular or candidate_singular in singular):
+                    score = max(score, 0.88)
+                if value_tokens and value_tokens <= candidate_tokens:
+                    score = max(score, 0.93)
+                if candidate_tokens and candidate_tokens <= value_tokens:
+                    score = max(score, 0.90)
+                if score > best_score:
+                    best_score = score
+                    best_key = key
+            if best_score >= 0.82:
+                match = best_key
+
+        if match is not None:
+            resolved.append(match)
+        else:
+            print(f"Warning: could not match focus label {value!r}")
+
+    deduped = []
+    seen = set()
+    for value in resolved:
+        if value not in seen:
+            seen.add(value)
+            deduped.append(value)
+    return deduped
 
 
 # TableVQA Image Tools
@@ -315,6 +394,7 @@ def focus_on_x_values_with_mask(image, x_values_to_focus_on, all_x_values_boundi
         image_with_focused_x_values = focus_on_x_values(image, ["2005", "2006"], {"2005": {'x1': 0.1, 'y1': 0.1, 'x2': 0.3, 'y2': 0.9}, "2006": {'x1': 0.4, 'y1': 0.1, 'x2': 0.6, 'y2': 0.9}, "2007": {'x1': 0.7, 'y1': 0.1, 'x2': 0.9, 'y2': 0.9}})
         display(image_with_focused_x_values)
     """
+    x_values_to_focus_on = _resolve_focus_values(x_values_to_focus_on, all_x_values_bounding_boxes)
     if len(all_x_values_bounding_boxes) == 0 or len(x_values_to_focus_on) == 0:
         return image
     # Create a drawing context for the image
@@ -361,6 +441,7 @@ def focus_on_y_values_with_mask(image, y_values_to_focus_on, all_y_values_boundi
         image = Image.open("sample_img.jpg")
         image_with_focused_y_values = focus_on_y_values(image, ["0", "10"], {"0": {'x1': 0.1, 'y1': 0.1, 'x2': 0.9, 'y2': 0.15}, "10": {'x1': 0.1, 'y1': 0.2, 'x2': 0.9, 'y2': 0.5}, "20": {'x1': 0.1, 'y1': 0.6, 'x2': 0.9, 'y2': 0.9}})
     """
+    y_values_to_focus_on = _resolve_focus_values(y_values_to_focus_on, all_y_values_bounding_boxes)
     if len(all_y_values_bounding_boxes) == 0 or len(y_values_to_focus_on) == 0:
         return image
     # Create a drawing context for the image
@@ -408,6 +489,7 @@ def focus_on_x_values_with_draw(image, x_values_to_focus_on, all_x_values_boundi
         image_with_focused_x_values = focus_on_x_values(image, ["2005", "2006"], {"2005": {'x1': 0.1, 'y1': 0.1, 'x2': 0.3, 'y2': 0.9}, "2006": {'x1': 0.4, 'y1': 0.1, 'x2': 0.6, 'y2': 0.9}, "2007": {'x1': 0.7, 'y1': 0.1, 'x2': 0.9, 'y2': 0.9}})
         display(image_with_focused_x_values)
     """
+    x_values_to_focus_on = _resolve_focus_values(x_values_to_focus_on, all_x_values_bounding_boxes)
     if len(all_x_values_bounding_boxes) == 0 or len(x_values_to_focus_on) == 0:
         return image
     # Create a drawing context for the image
@@ -450,6 +532,7 @@ def focus_on_y_values_with_draw(image, y_values_to_focus_on, all_y_values_boundi
         image = Image.open("sample_img.jpg")
         image_with_focused_y_values = focus_on_y_values(image, ["0", "10"], {"0": {'x1': 0.1, 'y1': 0.1, 'x2': 0.9, 'y2': 0.15}, "10": {'x1': 0.1, 'y1': 0.2, 'x2': 0.9, 'y2': 0.5}, "20": {'x1': 0.1, 'y1': 0.6, 'x2': 0.9, 'y2': 0.9}})
     """
+    y_values_to_focus_on = _resolve_focus_values(y_values_to_focus_on, all_y_values_bounding_boxes)
     if len(all_y_values_bounding_boxes) == 0 or len(y_values_to_focus_on) == 0:
         return image
     # Create a drawing context for the image
@@ -459,20 +542,13 @@ def focus_on_y_values_with_draw(image, y_values_to_focus_on, all_y_values_boundi
 
     # Iterate over the y values to draw
     for y_value in y_values_to_focus_on:
-        # Convert the bounding box to pixel coordinates
-        for ys in all_y_values_bounding_boxes:
-            if y_value in ys or ys in y_value:
-                y_value = ys
-        try:
-            y_value_bbox = all_y_values_bounding_boxes[y_value]
-            x1 = int(y_value_bbox['x1'] + 2)
-            y1 = int(y_value_bbox['y1'] + 2)
-            x2 = int(y_value_bbox['x2'] - 2)
-            y2 = int(y_value_bbox['y2'] - 2)
-            thickness = 5
-            draw.rectangle(((x1, y1), (x2, y2)), outline="red", width=thickness)
-        except Exception as e:
-            print(f"Error: {e}")
+        y_value_bbox = all_y_values_bounding_boxes[y_value]
+        x1 = int(y_value_bbox['x1'] + 2)
+        y1 = int(y_value_bbox['y1'] + 2)
+        x2 = int(y_value_bbox['x2'] - 2)
+        y2 = int(y_value_bbox['y2'] - 2)
+        thickness = 5
+        draw.rectangle(((x1, y1), (x2, y2)), outline="red", width=thickness)
 
 
     image_with_focused_y_values = image
@@ -499,6 +575,7 @@ def focus_on_x_values_with_highlight(image, x_values_to_focus_on, all_x_values_b
         image_with_focused_x_values = focus_on_x_values(image, ["2005", "2006"], {"2005": {'x1': 0.1, 'y1': 0.1, 'x2': 0.3, 'y2': 0.9}, "2006": {'x1': 0.4, 'y1': 0.1, 'x2': 0.6, 'y2': 0.9}, "2007": {'x1': 0.7, 'y1': 0.1, 'x2': 0.9, 'y2': 0.9}})
         display(image_with_focused_x_values)
     """
+    x_values_to_focus_on = _resolve_focus_values(x_values_to_focus_on, all_x_values_bounding_boxes)
     if len(all_x_values_bounding_boxes) == 0 or len(x_values_to_focus_on) == 0:
         return image
     
@@ -509,16 +586,12 @@ def focus_on_x_values_with_highlight(image, x_values_to_focus_on, all_x_values_b
     
     # Iterate over the x values to highlight
     for x_value in x_values_to_focus_on:
-        # Convert the bounding box to pixel coordinates
-        try:
-            x_value_bbox = all_x_values_bounding_boxes[x_value]
-            x1 = int(x_value_bbox['x1'] + 2)
-            y1 = int(x_value_bbox['y1'] + 2)
-            x2 = int(x_value_bbox['x2'] - 2)
-            y2 = int(x_value_bbox['y2'] - 2)
-            mask_draw.rectangle(((x1, y1), (x2, y2)), fill=(255, 0, 0, 50))
-        except Exception as e:
-            print(f"Error: {e}")
+        x_value_bbox = all_x_values_bounding_boxes[x_value]
+        x1 = int(x_value_bbox['x1'] + 2)
+        y1 = int(x_value_bbox['y1'] + 2)
+        x2 = int(x_value_bbox['x2'] - 2)
+        y2 = int(x_value_bbox['y2'] - 2)
+        mask_draw.rectangle(((x1, y1), (x2, y2)), fill=(255, 0, 0, 50))
         
     # Composite the overlay with the mask over the original image
     image_with_focused_x_values = Image.alpha_composite(image.convert('RGBA'), mask)
@@ -544,6 +617,7 @@ def focus_on_y_values_with_highlight(image, y_values_to_focus_on, all_y_values_b
         image = Image.open("sample_img.jpg")
         image_with_focused_y_values = focus_on_y_values(image, ["0", "10"], {"0": {'x1': 0.1, 'y1': 0.1, 'x2': 0.9, 'y2': 0.15}, "10": {'x1': 0.1, 'y1': 0.2, 'x2': 0.9, 'y2': 0.5}, "20": {'x1': 0.1, 'y1': 0.6, 'x2': 0.9, 'y2': 0.9}})
     """
+    y_values_to_focus_on = _resolve_focus_values(y_values_to_focus_on, all_y_values_bounding_boxes)
     if len(all_y_values_bounding_boxes) == 0 or len(y_values_to_focus_on) == 0:
         return image
     

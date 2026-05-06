@@ -17,7 +17,13 @@ from typing import Optional, Union
 
 import torch
 import torch.distributed as dist
-from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict, set_state_dict
+from torch.distributed.checkpoint.state_dict import (
+    StateDictOptions,
+    get_model_state_dict,
+    get_state_dict,
+    set_model_state_dict,
+    set_state_dict,
+)
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from transformers import PreTrainedModel, PreTrainedTokenizer, ProcessorMixin
 
@@ -57,20 +63,24 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         optim_path = os.path.join(path, f"optim_world_size_{self.world_size}_rank_{self.rank}.pt")
         extra_path = os.path.join(path, f"extra_state_world_size_{self.world_size}_rank_{self.rank}.pt")
         print(f"[rank-{self.rank}]: Loading model from {os.path.abspath(model_path)}.")
-        print(f"[rank-{self.rank}]: Loading optimizer from {os.path.abspath(optim_path)}.")
         print(f"[rank-{self.rank}]: Loading extra_state from {os.path.abspath(extra_path)}.")
         model_state_dict = torch.load(model_path, weights_only=False)
-        optim_state_dict = torch.load(optim_path, weights_only=False)
         extra_state_dict = torch.load(extra_path, weights_only=False)
 
         state_dict_options = StateDictOptions(cpu_offload=True)
-        set_state_dict(
-            model=self.model,
-            optimizers=self.optimizer,
-            model_state_dict=model_state_dict,
-            optim_state_dict=optim_state_dict,
-            options=state_dict_options,
-        )
+        if os.path.exists(optim_path):
+            print(f"[rank-{self.rank}]: Loading optimizer from {os.path.abspath(optim_path)}.")
+            optim_state_dict = torch.load(optim_path, weights_only=False)
+            set_state_dict(
+                model=self.model,
+                optimizers=self.optimizer,
+                model_state_dict=model_state_dict,
+                optim_state_dict=optim_state_dict,
+                options=state_dict_options,
+            )
+        else:
+            print(f"[rank-{self.rank}]: Optimizer checkpoint not found; loading model only.")
+            set_model_state_dict(self.model, model_state_dict, options=state_dict_options)
         self.lr_scheduler.load_state_dict(extra_state_dict["lr_scheduler"])
 
         # recover random state
@@ -81,9 +91,14 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         path = self.local_mkdir(path)
         dist.barrier()
 
-        # every rank will save its own model and optim shard
+        # every rank will save its own model and, unless disabled, optimizer shard
+        model_only = os.environ.get("VERL_SAVE_MODEL_ONLY", "0") == "1"
         state_dict_options = StateDictOptions(cpu_offload=True)
-        model_state_dict, optim_state_dict = get_state_dict(self.model, self.optimizer, options=state_dict_options)
+        if model_only:
+            model_state_dict = get_model_state_dict(self.model, options=state_dict_options)
+            optim_state_dict = None
+        else:
+            model_state_dict, optim_state_dict = get_state_dict(self.model, self.optimizer, options=state_dict_options)
         extra_state_dict = {
             "lr_scheduler": self.lr_scheduler.state_dict(),
             "rng": self.get_rng_state(),
@@ -93,10 +108,14 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         extra_path = os.path.join(path, f"extra_state_world_size_{self.world_size}_rank_{self.rank}.pt")
 
         print(f"[rank-{self.rank}]: Saving model to {os.path.abspath(model_path)}.")
-        print(f"[rank-{self.rank}]: Saving optimizer to {os.path.abspath(optim_path)}.")
+        if model_only:
+            print(f"[rank-{self.rank}]: Skipping optimizer save because VERL_SAVE_MODEL_ONLY=1.")
+        else:
+            print(f"[rank-{self.rank}]: Saving optimizer to {os.path.abspath(optim_path)}.")
         print(f"[rank-{self.rank}]: Saving extra_state to {os.path.abspath(extra_path)}.")
         torch.save(model_state_dict, model_path)
-        torch.save(optim_state_dict, optim_path)
+        if optim_state_dict is not None:
+            torch.save(optim_state_dict, optim_path)
         torch.save(extra_state_dict, extra_path)
 
         # wait for everyone to dump to local

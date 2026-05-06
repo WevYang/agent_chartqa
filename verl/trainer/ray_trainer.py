@@ -666,7 +666,14 @@ class RayPPOTrainer:
             if base_image is not None:
                 original_image = base_image.copy()
                 if trace_enable:
-                    original_full_batch.non_tensor_batch["image_1_pil"][idx] = base_image
+                    if "image_1_pil" in original_full_batch.non_tensor_batch:
+                        existing_images = list(original_full_batch.non_tensor_batch["image_1_pil"])
+                    else:
+                        existing_images = [None] * n
+                    if len(existing_images) != n:
+                        existing_images = [None] * n
+                    existing_images[idx] = base_image.copy()
+                    original_full_batch.non_tensor_batch["image_1_pil"] = np.array(existing_images, dtype=object)
                     if self._trace_save_images and trace_step_dir is not None:
                         try:
                             orig_dst = os.path.join(trace_step_dir, f"img_{idx}_orig.png")
@@ -807,6 +814,7 @@ class RayPPOTrainer:
                 second_rollout_data["raw_prompt_ids"] = raw_prompt_ids
                 second_rollout_data["metadata"] = metadata_batch[idx]
                 second_rollout_data["rollout_round"] = 1
+                second_rollout_data["penalty"] = 1.0
 
                 # we add all the keys that aren't yet assigned
                 for key in original_full_batch.non_tensor_batch.keys():

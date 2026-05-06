@@ -1,0 +1,66 @@
+{{ content | trim }}
+
+You are solving a ChartQA task.
+A focus tool call is mandatory before the final answer.
+
+Use the chart labels provided in the prompt:
+- For a horizontal bar chart, the category labels are usually in y_values. Focus them with:
+  focus_on_y_values_with_draw(image_1, selected_y_values, y_values_bbox)
+- For a vertical bar chart, the category labels are usually in x_values. Focus them with:
+  focus_on_x_values_with_draw(image_1, selected_x_values, x_values_bbox)
+- Select exact label strings from the x_values or y_values list. Copy labels exactly; do not paraphrase, singularize, pluralize, translate, or shorten labels.
+- If the question compares multiple categories, focus all required labels in one call.
+- Before answering, identify the requested operation:
+  absolute value / growth or increase / decrease / difference / maximum / minimum / sum / average.
+- If the question asks for growth, increase, decrease, or difference, do not answer with the raw bar value unless the chart directly labels that derived quantity.
+- For growth, increase, decrease, or difference, focus every label needed for the comparison in one call, such as the target label plus the previous/next related label when both are listed.
+- If the question asks for largest or smallest growth, compare the relevant displayed values and return the growth amount, not the endpoint total.
+- For "largest growth in <year>" on a grouped or stacked chart, focus the year label, read the candidate growth values inside that focused group, and return the largest candidate value. Do not return the total height or endpoint value.
+- If the question asks for a direct value, count, amount, total, number, or "how many", the operation is absolute. Do not subtract or compare; copy the read value as the final answer.
+- Only calculate when the question explicitly asks for growth, increase, decrease, difference, sum, average, ratio, maximum, or minimum.
+
+Horizontal-bar example:
+# USER REQUEST #: <A image here> How many games did Josh win?
+# USER Bounding Box Info: x_values_bbox, storing x values and coordinates. y_values_bbox, storing x values and coordinates. The x values in the image are: []. The y values in the image are: ["Josh", "Alice", "Bob"].
+# RESULT #:
+THOUGHT 0: Focus y label "Josh".
+ACTION 0:
+```python
+image_with_focused_y_values = focus_on_y_values_with_draw(image_1, ["Josh"], y_values_bbox)
+display(image_with_focused_y_values)
+```
+OBSERVATION: Execution success. The output is as follows:
+<the image outputs of the previous code is here.>
+THOUGHT 1: op=absolute; value=3.
+ANSWER: 3. FINAL ANSWER: 3. TERMINATE
+
+Vertical-bar example:
+# USER REQUEST #: <A image here> What is the value for April?
+# USER Bounding Box Info: x_values_bbox, storing x values and coordinates. y_values_bbox, storing x values and coordinates. The x values in the image are: ["March", "April", "May"]. The y values in the image are: [].
+# RESULT #:
+THOUGHT 0: Focus x label "April".
+ACTION 0:
+```python
+image_with_focused_x_values = focus_on_x_values_with_draw(image_1, ["April"], x_values_bbox)
+display(image_with_focused_x_values)
+```
+OBSERVATION: Execution success. The output is as follows:
+<the image outputs of the previous code is here.>
+THOUGHT 1: op=absolute; value=8.
+ANSWER: 8. FINAL ANSWER: 8. TERMINATE
+
+Now solve the actual problem using the same pattern.
+Choose exactly one focus tool based on the listed labels:
+- If the needed labels appear in y_values, call focus_on_y_values_with_draw.
+- If the needed labels appear in x_values, call focus_on_x_values_with_draw.
+
+Your first response must contain only THOUGHT 0 and ACTION 0, then wait for the observation.
+THOUGHT 0 must be one short sentence. Do not list all available labels.
+Do not write OBSERVATION, ANSWER, FINAL ANSWER, or TERMINATE before the tool result is returned.
+After the observation, finish with:
+THOUGHT 1: op=<operation>; read=<value(s)>; answer=<copy read value if absolute, otherwise computed result>.
+ANSWER: <number or short phrase only>. FINAL ANSWER: <same number or phrase only>. TERMINATE
+
+For growth, increase, decrease, difference, maximum, or minimum questions, `read` must include the compared values or candidate values, and `answer` must be the computed or selected result. Do not copy one raw value as the answer unless the chart explicitly displays that derived value.
+
+Do not write ACTION 1. The final line must always include FINAL ANSWER and TERMINATE. For numeric questions, FINAL ANSWER should contain only the number, without units or extra words.

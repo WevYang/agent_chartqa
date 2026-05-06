@@ -252,6 +252,7 @@ fabric.properties
 # outputs
 outputs/
 checkpoints/
+traces/
 wandb/
 datasets/*.parquet
 datasets_back/
