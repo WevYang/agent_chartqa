@@ -31,6 +31,7 @@ export VERL_ADAMW_FUSED="${VERL_ADAMW_FUSED:-0}"
 export VERL_ANYPRECISION_USE_KAHAN="${VERL_ANYPRECISION_USE_KAHAN:-0}"
 export VERL_DISABLE_VALIDATION="${VERL_DISABLE_VALIDATION:-1}"
 export VERL_DISABLE_CHECKPOINT_SAVE="${VERL_DISABLE_CHECKPOINT_SAVE:-1}"
+ACTOR_OFFLOAD_OPTIMIZER="${ACTOR_OFFLOAD_OPTIMIZER:-false}"
 
 mkdir -p \
   "$TMPDIR" \
@@ -48,6 +49,12 @@ TRAIN_FILES="${TRAIN_FILES:-datasets/train_full.parquet}"
 VAL_FILES="${VAL_FILES:-datasets/val_full.parquet}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-mini_chartQA_smoke}"
 MAX_STEPS="${MAX_STEPS:-1}"
+DATA_MAX_PROMPT_LENGTH="${DATA_MAX_PROMPT_LENGTH:-4096}"
+DATA_MAX_RESPONSE_LENGTH="${DATA_MAX_RESPONSE_LENGTH:-128}"
+ROLLOUT_N="${ROLLOUT_N:-2}"
+ROLLOUT_MAX_MODEL_LEN="${ROLLOUT_MAX_MODEL_LEN:-5120}"
+ROLLOUT_MAX_NUM_BATCHED_TOKENS="${ROLLOUT_MAX_NUM_BATCHED_TOKENS:-5120}"
+ACTOR_MICRO_BATCH_SIZE_UPDATE="${ACTOR_MICRO_BATCH_SIZE_UPDATE:-2}"
 
 python3 -m verl.trainer.main \
     config=examples/config.yaml \
@@ -57,18 +64,18 @@ python3 -m verl.trainer.main \
     algorithm.online_filtering=false \
     data.train_files="${TRAIN_FILES}" \
     data.val_files="${VAL_FILES}" \
-    data.max_prompt_length=4096 \
-    data.max_response_length=128 \
+    data.max_prompt_length="${DATA_MAX_PROMPT_LENGTH}" \
+    data.max_response_length="${DATA_MAX_RESPONSE_LENGTH}" \
     worker.actor.model.model_path="${MODEL_PATH}" \
     worker.actor.padding_free=false \
     worker.actor.use_torch_compile=false \
     worker.critic.padding_free=false \
     worker.ref.padding_free=false \
     worker.rollout.tensor_parallel_size=1 \
-    worker.rollout.n=2 \
+    worker.rollout.n="${ROLLOUT_N}" \
     worker.rollout.gpu_memory_utilization=0.35 \
-    worker.rollout.max_model_len=5120 \
-    worker.rollout.max_num_batched_tokens=5120 \
+    worker.rollout.max_model_len="${ROLLOUT_MAX_MODEL_LEN}" \
+    worker.rollout.max_num_batched_tokens="${ROLLOUT_MAX_NUM_BATCHED_TOKENS}" \
     worker.rollout.limit_images=1 \
     worker.rollout.enforce_eager=true \
     trainer.experiment_name="${EXPERIMENT_NAME}" \
@@ -80,12 +87,12 @@ python3 -m verl.trainer.main \
     trainer.save_freq=-1 \
     trainer.logger='[console]' \
     worker.actor.global_batch_size=1 \
-    worker.actor.micro_batch_size_per_device_for_update=2 \
+    worker.actor.micro_batch_size_per_device_for_update="${ACTOR_MICRO_BATCH_SIZE_UPDATE}" \
     worker.actor.micro_batch_size_per_device_for_experience=1 \
     worker.actor.optim.strategy=adamw_bf16 \
     worker.actor.fsdp.enable_cpu_offload=false \
     worker.actor.offload.offload_params=true \
-    worker.actor.offload.offload_optimizer=false \
+    worker.actor.offload.offload_optimizer="${ACTOR_OFFLOAD_OPTIMIZER}" \
     data.rollout_batch_size=1 \
     data.val_batch_size=1 \
     trainer.save_checkpoint_path=./checkpoints/"${EXPERIMENT_NAME}" \
