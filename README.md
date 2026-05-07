@@ -167,14 +167,66 @@ agent_chartqa/
 └── requirements.txt
 ```
 
-## 可扩展方向
+## Agentic Evaluation Harness
+
+本仓库已加入一个不依赖 GPU 的训练后分析模块：`agentic_eval/`。该模块参考 `medical_agent` 中的 Skill Registry、Agent Loop、记忆检索和约束校验思想，但只服务于 ChartQA trace 归因，不引入医疗知识。
+
+核心组件：
+
+- `agentic_eval/skill_registry.py`：把分析函数注册为 skill，并可导出 function calling schema。
+- `agentic_eval/agent_loop.py`：确定性 Agent Loop，按固定顺序执行问题分类、答案抽取、约束校验、错误归因和相似失败检索。
+- `agentic_eval/constraints.py`：ChartQA 专用约束，例如派生题至少需要两个 focus labels、ranking 题不能输出纯数值、必须有 `FINAL ANSWER`。
+- `agentic_eval/memory.py`：纯 Python lexical trace memory，用于检索相似失败样本；后续可替换为 Milvus Lite + embedding 后端。
+- `agentic_eval/cli.py`：命令行入口，可直接分析 `traces/**/trace.jsonl`。
+
+CPU smoke：
+
+```bash
+bash scripts/run_agentic_eval_smoke.sh
+```
+
+或指定 trace 目录：
+
+```bash
+python -m agentic_eval.cli \
+  --trace-path traces/mini_chartQA_toolfixed_growthprompt_modelonly_n4_20step_v20 \
+  --failures-only \
+  --output outputs/agentic_eval/report.jsonl
+```
+
+本地 v20 trace smoke 结果：
+
+```json
+{
+  "total": 20,
+  "by_error_type": {
+    "correct": 14,
+    "insufficient_focus_for_derived_question": 3,
+    "numeric_mismatch": 2,
+    "ranking_value_instead_of_category": 1
+  },
+  "by_question_type": {
+    "absolute": 4,
+    "aggregation": 2,
+    "average": 2,
+    "counting": 8,
+    "difference": 2,
+    "growth": 1,
+    "ranking": 1
+  }
+}
+```
+
+这个模块的定位是训练后自动化归因和后续 reward shaping 依据，不改变当前 v20 checkpoint 的训练结果。
+
+## 后续可扩展方向
 
 `~/rivermind-data/medical_agent` 中的医疗知识本身不应直接混入 ChartQA 项目，否则主题会变得不可信；但其中的 Agent 工程能力可以合理迁移到 ChartQA：
 
 - Skill Registry：把 chart focus、OCR/table parsing、numeric verifier、answer normalizer 封装为可注册工具，统一转成 function calling schema。
 - Agent Loop：从“单次强制工具调用”升级为“观察图表、选择工具、验证答案、必要时二次聚焦”的循环。
 - Constraint Validator：限制最大工具调用次数、强制 `FINAL ANSWER` schema、禁止无证据数值、检查单位和百分号格式。
-- Trace Memory/RAG：用 Milvus Lite 存储失败 trace、题型、错误原因和修复策略，训练后分析 ranking/range/growth 类错误。
+- Trace Memory/RAG：当前已实现 lexical trace memory；后续可用 Milvus Lite 存储失败 trace、题型、错误原因和修复策略，训练后分析 ranking/range/growth 类错误。
 - Agentic Evaluation：用 evaluator agent 自动归因错误类型，辅助 reward shaping，而不是把它写成医疗问答系统。
 
-因此，简历上合理的表述是“借鉴多 Agent/Skill Registry/RAG/约束校验思想，规划并可扩展为 ChartQA Agentic Evaluation Harness”。不建议写成“医疗 Agent 与 ChartQA 统一项目”，也不建议声称这些扩展已经参与当前 v20 训练，除非后续实际实现并跑出日志。
+因此，简历上合理的表述是“借鉴多 Agent/Skill Registry/RAG/约束校验思想，落地 ChartQA 训练后 Agentic Evaluation Harness”。不建议写成“医疗 Agent 与 ChartQA 统一项目”，也不建议声称这些扩展已经参与当前 v20 训练，除非后续实际接入训练闭环并跑出 ablation。

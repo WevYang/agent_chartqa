@@ -11,16 +11,16 @@
 - 在单张 RTX 4090 48GB 环境下完成端到端 GRPO 训练验证，通过 optimizer/parameter offload、micro-batch 调整、像素裁剪和 response length 控制缓解 rollout 与 actor update 阶段显存瓶颈；20-step 复现实验中平均单步约 34s、吞吐约 215 tok/s、显存峰值约 46.6GB，并新增 model-only checkpoint 保存模式，避免完整 FSDP optimizer checkpoint 占满磁盘。
 - 最终 v20 复现实验中，`reward/overall` 平均达到 0.9204、后 10 步提升至 0.9371，内部 `reward/accuracy` 平均达到 0.8553、后 10 步达到 0.8857；`reward/tool` 与 `reward/format` 全程保持 1.0，`response_clip_ratio=0`，说明模型稳定习得了先调用图表聚焦工具、再基于观察结果输出规范答案的行为；通过 trace 进一步定位 ranking、between/range 与 difference/growth 派生题仍是主要误差来源，为后续 reward shaping 和 prompt 约束优化提供依据。
 
-## 如果要加入 Agent/RAG 技术点
+## 加入 Agent/RAG 技术点后的写法
 
-建议只写成“可扩展或已设计的评测增强”，不要把医疗项目包装成 ChartQA 已完成能力。更稳妥的写法如下：
+建议写成“训练后评测与误差归因增强”，不要把医疗项目包装成 ChartQA 已完成能力。更稳妥的写法如下：
 
 **Agent-ChartQA 多模态图表问答强化学习与 Agentic Evaluation Harness**
 `2026年05月`
 
-- 在 ChartQA 强化学习复现基础上，进一步参考多 Agent 医疗助手项目中的 Skill Registry、Agent Loop、Milvus Lite RAG、短长期记忆和 Constraint Validator 设计，规划 ChartQA 专用的 Agentic Evaluation Harness：将 chart focus、数值归一化、答案校验、错误归因和 trace 检索封装为可注册工具，服务于训练后的自动化误差分析与 reward shaping。
-- 设计 trace memory 方案，将训练过程中的图表类型、工具调用参数、模型答案、标准答案、reward 分项和错误类别写入向量库，支持按 ranking、range、difference/growth 等失败模式检索相似样本，为后续 prompt 调整和奖励函数迭代提供可追溯证据。
-- 设计约束校验机制，对工具调用次数、`FINAL ANSWER` 格式、单位/百分号表达、数值来源和无证据推断进行运行时校验，避免模型通过格式投机或无依据数值猜测获得局部奖励；该部分适合作为后续工程扩展，不应混同为当前 v20 checkpoint 的训练结果。
+- 在 ChartQA 强化学习复现基础上，参考多 Agent 医疗助手项目中的 Skill Registry、Agent Loop、Milvus Lite RAG、短长期记忆和 Constraint Validator 设计，落地 CPU-only 的 ChartQA Agentic Evaluation Harness：将问题类型识别、`FINAL ANSWER` 抽取、relaxed numeric verification、工具调用约束校验、错误归因和相似失败检索封装为可注册 skills，服务于训练后的自动化误差分析与 reward shaping。
+- 构建 trace memory 方案，将训练过程中的图表类型、工具调用参数、模型答案、标准答案、reward 分项和错误类别写入轻量检索后端，支持按 ranking、range、difference/growth 等失败模式检索相似样本；在未安装 Milvus Lite 和 embedding 模型的环境下，先实现纯 Python lexical retrieval，后续可替换为 Milvus Lite 向量检索后端。
+- 设计并实现 ChartQA 约束校验机制，对工具调用成功率、`FINAL ANSWER` 格式、ranking 题答案类型、派生题多标签聚焦、单位/百分号表达和无证据数值推断进行运行时校验；本地 v20 trace smoke 中自动归因出 14 条 correct、3 条派生题聚焦不足、2 条数值不匹配和 1 条 ranking 输出类型错误，为后续 prompt 调整和奖励函数迭代提供可追溯证据。
 
 ## 面试可展开点
 
@@ -31,7 +31,7 @@
 - 为什么单卡 FSDP 在 world size 为 1 时会退化为 `NO_SHARD`，以及如何通过 offload、micro-batch 和像素裁剪控制显存。
 - 为什么完整 optimizer checkpoint 会远大于模型权重，项目中如何用 model-only checkpoint 规避磁盘风险。
 - 为什么当前结果不能写成官方 ChartQA test accuracy：v20 指标是训练内部 reward/trace 指标，官方 test accuracy 需要标准 evaluator 单独评测。
-- `medical_agent` 能迁移什么：Skill Registry、Agent Loop、Milvus Lite 记忆库、约束校验、自动化评测思想。
+- `medical_agent` 能迁移什么：Skill Registry、Agent Loop、Milvus Lite 记忆库、约束校验、自动化评测思想；当前项目已落地 CPU-only 版本，其中 Milvus Lite 作为后续可替换后端。
 - `medical_agent` 不能迁移什么：医疗知识库、疾病风险判断、临床指南逻辑，这些和 ChartQA 任务无关，写进项目反而会显得不真实。
 
 ## 不建议的写法
