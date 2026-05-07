@@ -144,7 +144,8 @@ def main():
     # ── build vLLM message dicts ─────────────────────────────────────────────
     all_messages = []
     for _, row in df.iterrows():
-        img_bytes = row["images"][0]["bytes"]   # first image bytes
+        img_item = row["images"][0]
+        img_bytes = img_item["bytes"] if isinstance(img_item, dict) else bytes(img_item)
         msgs = build_vllm_messages(row["prompt"], img_bytes)
         all_messages.append(msgs)
 

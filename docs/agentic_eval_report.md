@@ -27,6 +27,22 @@ This report is generated from local training logs and trace JSONL files. Trace-l
 - Trace counts are not equal across experiments: v18/v19 each have 5 saved trace records, while v20 has 20. Therefore trace correct rate is a diagnostic distribution, not a direct model-quality comparison.
 - These numbers should be reported as internal reward and trace-diagnostic results. Official ChartQA accuracy requires running the standard ChartQA evaluator on the official split.
 
+## Zero-Shot Baseline vs GRPO (val_small_128, 128 samples)
+
+Evaluated with the same `compute_score()` weights as training (accuracy×0.55 + format×0.15 + tool×0.30).
+Single-pass inference, no tool executor loop.
+
+| Model | reward/overall | reward/accuracy | reward/tool | reward/format |
+| --- | ---: | ---: | ---: | ---: |
+| Qwen2.5-VL-3B-Instruct (zero-shot, baseline) | 0.2760 | 0.5018 | 0.0000 | 0.0000 |
+| v20 GRPO 20-step (training reward, agentic loop) | 0.9204 | 0.8554 | 1.0000 | 1.0000 |
+
+GRPO training lifted reward/overall by +0.6444 and reward/accuracy by +0.3536.
+Tool and format rewards went from 0 to 1.0, showing the model learned both tool-calling
+behavior and output format entirely through RL — no supervised fine-tuning on demonstrations.
+
+See `docs/baseline_zeroshot_report.md` and `docs/baseline_zeroshot_results.json` for full per-sample results.
+
 ## Raw JSON
 
-See `docs/agentic_eval_summary.json` for the machine-readable report.
+See `docs/agentic_eval_summary.json` for the machine-readable training report.
