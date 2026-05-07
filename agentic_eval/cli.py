@@ -58,7 +58,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default="", help="Optional JSONL output path.")
     parser.add_argument("--max-records", type=int, default=0, help="Limit loaded trace records. 0 means no limit.")
     parser.add_argument("--top-k", type=int, default=3, help="Similar failure cases to attach to each analysis.")
-    parser.add_argument("--accuracy-threshold", type=float, default=0.95, help="Failure threshold for trace memory indexing.")
+    parser.add_argument("--accuracy-threshold", type=float, default=0.90, help="Failure threshold for trace memory indexing.")
     parser.add_argument("--failures-only", action="store_true", help="Only write non-correct analyses to output.")
     parser.add_argument("--demo", action="store_true", help="Run on built-in demo records if no local trace is available.")
     return parser.parse_args()
