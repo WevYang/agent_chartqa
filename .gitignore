@@ -288,3 +288,6 @@ data/chartqa_vcot/
 eval/results*
 
 .DS_Store
+
+# personal / local files
+RESUME_AGENT_CHARTQA.md

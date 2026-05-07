@@ -7,7 +7,7 @@ and writes a JSON + Markdown report comparable to the training metrics table.
 
 Usage (GPU required):
     python scripts/run_baseline_eval.py \
-        --model_path /root/rivermind-data/qwen_2.5_3b_instruct \
+        --model_path Qwen/Qwen2.5-VL-3B-Instruct \
         --val_file   datasets/val_small_128.parquet \
         --output_dir docs/baseline_eval \
         --label      baseline_zeroshot

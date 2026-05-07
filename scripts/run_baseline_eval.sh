@@ -16,10 +16,10 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_DIR"
 
-PYTHON="/root/rivermind-data/conda_envs/agent_chartqa_rt/bin/python"
-VAL_FILE="datasets/val_small_128.parquet"
-OUTPUT_DIR="docs/baseline_eval"
-BASELINE_MODEL="/root/rivermind-data/qwen_2.5_3b_instruct"
+PYTHON="${PYTHON:-python}"
+VAL_FILE="${VAL_FILE:-datasets/val_small_128.parquet}"
+OUTPUT_DIR="${OUTPUT_DIR:-docs/baseline_eval}"
+BASELINE_MODEL="${BASELINE_MODEL:-Qwen/Qwen2.5-VL-3B-Instruct}"
 V20_CKPT_DIR="checkpoints/mini_chartQA_toolfixed_growthprompt_modelonly_n4_20step_v20/global_step_21/actor"
 V20_HF_DIR="${V20_CKPT_DIR}/huggingface"
 
