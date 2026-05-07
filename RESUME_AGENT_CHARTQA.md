@@ -22,6 +22,22 @@
 - 构建 trace memory 方案，将训练过程中的图表类型、工具调用参数、模型答案、标准答案、reward 分项和错误类别写入轻量检索后端，支持按 ranking、range、difference/growth 等失败模式检索相似样本；在未安装 Milvus Lite 和 embedding 模型的环境下，先实现纯 Python lexical retrieval，后续可替换为 Milvus Lite 向量检索后端。
 - 设计并实现 ChartQA 约束校验机制，对工具调用成功率、`FINAL ANSWER` 格式、ranking 题答案类型、派生题多标签聚焦、单位/百分号表达和无证据数值推断进行运行时校验；本地 v20 trace smoke 中自动归因出 14 条 correct、3 条派生题聚焦不足、2 条数值不匹配和 1 条 ranking 输出类型错误，为后续 prompt 调整和奖励函数迭代提供可追溯证据。
 
+## 最终完整项目描述
+
+**Agent-ChartQA 多模态图表问答强化学习复现与 Agentic 误差归因**
+`2026年05月`
+
+- 面向图表问答中结构化视觉定位不足、数值抽取不稳定和复杂派生推理易受语言先验影响的问题，基于 `Qwen2.5-VL-3B-Instruct`、`veRL`、`vLLM` 与 `PyTorch/FSDP` 复现 Agent-ChartQA 强化学习训练链路，完成 ChartQA 数据预处理、bbox-aware 图表聚焦工具、GRPO 训练、trace 归因、model-only checkpoint 保存和 Hugging Face 发布闭环。
+- 负责训练链路工程化改造：将 ChartQA 图像、问题、答案与 `x_values_bbox`/`y_values_bbox` 结构化定位信息组织为 parquet 多模态样本；重构单卡训练入口，支持模型路径、像素上限、rollout 数量、验证频率、trace 输出和缓存目录配置，并将模型、日志和缓存统一迁移至 `~/rivermind-data`，解决系统盘空间受限问题。
+- 设计工具调用与奖励机制：实现鲁棒 `FINAL ANSWER`/`ANSWER`/`\boxed{}` 解析、relaxed numeric matching、工具执行奖励和格式奖励；对图表标签匹配加入大小写、单复数、星号后缀和 token-subset 模糊匹配，并修复 vLLM rollout 进度条异常、训练 trace 图像序列化和工具奖励归因问题。
+- 在单张 RTX 4090 48GB 上完成 20-step 端到端 GRPO 训练，通过 offload、micro-batch 调整、像素裁剪和 response length 控制缓解 rollout 与 actor update OOM；v20 实验平均单步约 34.17s、吞吐约 214.85 tok/s、显存峰值约 46.57GB，并通过 model-only checkpoint 将最终 16.26GB 权重上传至 Hugging Face，避免完整 optimizer checkpoint 占满磁盘。
+- 训练指标上，v20 相比 v19 的 `reward/overall` 均值从 0.9163 提升到 0.9204、后半程从 0.9305 提升到 0.9371；`reward/accuracy` 均值从 0.8478 提升到 0.8554、后半程从 0.8737 提升到 0.8857；`reward/tool` 与 `reward/format` 在 v18/v19/v20 中均保持 1.0，说明工具调用和输出格式已稳定收敛，剩余瓶颈主要来自工具聚焦是否充分和最终数值/类别推理是否正确。
+- 进一步参考多 Agent 医疗助手项目中的 Skill Registry、Agent Loop、Trace Memory/RAG 和 Constraint Validator 思想，落地 CPU-only Agentic Evaluation Harness，将题型识别、答案抽取、数值校验、工具调用约束检查、错误归因和相似失败样本检索封装为可注册 skills；在 v20 的 20 条 trace smoke 中自动归因出 14 条正确、3 条派生题聚焦不足、2 条数值不匹配和 1 条 ranking 输出类型错误，为后续 prompt 约束和 reward shaping 提供可追溯依据。
+
+一句话解释 Agent/RAG 扩展的价值：
+
+> 它不是直接把当前 checkpoint 分数抬高，而是把“训练完以后为什么错”变成可复现的结构化诊断：能量化错误类型、定位下一步优化方向，并避免只看平均 reward 导致误判。
+
 ## 面试可展开点
 
 - 为什么图表问答不只依赖文本 prompt，而需要把 `x_values_bbox`、`y_values_bbox` 等结构化视觉定位信息接入工具。

@@ -1,0 +1,340 @@
+{
+  "json_path": "docs/agentic_eval_summary.json",
+  "experiments": [
+    {
+      "name": "v18",
+      "description": "5-step quick validation",
+      "trace_path": "traces/mini_chartQA_toolfixed_balanced_n4_5step_v18",
+      "log_path": "logs/train_mini_chartQA_toolfixed_balanced_n4_5step_v18_20260507_0116.log",
+      "training": {
+        "num_steps": 5,
+        "first_step": 1,
+        "last_step": 5,
+        "reward/overall": {
+          "mean": 0.9176,
+          "first_half_mean": 0.794,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 0.588,
+          "max": 1.0
+        },
+        "reward/accuracy": {
+          "mean": 0.8502,
+          "first_half_mean": 0.6255,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 0.251,
+          "max": 1.0
+        },
+        "reward/tool": {
+          "mean": 1.0,
+          "first_half_mean": 1.0,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 1.0,
+          "max": 1.0
+        },
+        "reward/format": {
+          "mean": 1.0,
+          "first_half_mean": 1.0,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 1.0,
+          "max": 1.0
+        },
+        "response_length/mean": {
+          "mean": 46.8,
+          "first_half_mean": 50.0,
+          "last_half_mean": 42.0,
+          "final": 42.0,
+          "min": 42.0,
+          "max": 58.0
+        },
+        "response_length/clip_ratio": {
+          "mean": 0.0,
+          "first_half_mean": 0.0,
+          "last_half_mean": 0.0,
+          "final": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "perf/time_per_step": {
+          "mean": 34.146,
+          "first_half_mean": 34.505,
+          "last_half_mean": 34.0795,
+          "final": 33.876,
+          "min": 33.561,
+          "max": 35.278
+        },
+        "perf/throughput": {
+          "mean": 205.8978,
+          "first_half_mean": 200.8365,
+          "last_half_mean": 209.44,
+          "final": 202.506,
+          "min": 195.136,
+          "max": 216.374
+        },
+        "perf/max_memory_reserved_gb": {
+          "mean": 46.6114,
+          "first_half_mean": 46.612,
+          "last_half_mean": 46.611,
+          "final": 46.611,
+          "min": 46.611,
+          "max": 46.613
+        },
+        "perf/max_memory_allocated_gb": {
+          "mean": 44.0258,
+          "first_half_mean": 43.382,
+          "last_half_mean": 44.455,
+          "final": 44.455,
+          "min": 42.309,
+          "max": 44.455
+        }
+      },
+      "agentic_eval": {
+        "trace_records": 5,
+        "correct": 4,
+        "correct_rate": 0.8,
+        "failure_count": 1,
+        "answer_score_mean": 0.8564,
+        "by_error_type": {
+          "correct": 4,
+          "insufficient_focus_for_derived_question": 1
+        },
+        "by_question_type": {
+          "counting": 4,
+          "growth": 1
+        },
+        "by_violation": {
+          "derived_question_needs_two_or_more_focus_labels": 1
+        }
+      }
+    },
+    {
+      "name": "v19",
+      "description": "20-step balanced prompt",
+      "trace_path": "traces/mini_chartQA_toolfixed_balanced_n4_20step_v19",
+      "log_path": "logs/train_mini_chartQA_toolfixed_balanced_n4_20step_v19_20260507_0124.log",
+      "training": {
+        "num_steps": 20,
+        "first_step": 1,
+        "last_step": 20,
+        "reward/overall": {
+          "mean": 0.9163,
+          "first_half_mean": 0.902,
+          "last_half_mean": 0.9305,
+          "final": 0.937,
+          "min": 0.45,
+          "max": 1.0
+        },
+        "reward/accuracy": {
+          "mean": 0.8478,
+          "first_half_mean": 0.8219,
+          "last_half_mean": 0.8737,
+          "final": 0.885,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "reward/tool": {
+          "mean": 1.0,
+          "first_half_mean": 1.0,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 1.0,
+          "max": 1.0
+        },
+        "reward/format": {
+          "mean": 1.0,
+          "first_half_mean": 1.0,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 1.0,
+          "max": 1.0
+        },
+        "response_length/mean": {
+          "mean": 46.0125,
+          "first_half_mean": 46.25,
+          "last_half_mean": 45.775,
+          "final": 47.75,
+          "min": 33.0,
+          "max": 58.0
+        },
+        "response_length/clip_ratio": {
+          "mean": 0.0,
+          "first_half_mean": 0.0,
+          "last_half_mean": 0.0,
+          "final": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "perf/time_per_step": {
+          "mean": 33.7598,
+          "first_half_mean": 34.0073,
+          "last_half_mean": 33.5122,
+          "final": 34.321,
+          "min": 32.618,
+          "max": 35.368
+        },
+        "perf/throughput": {
+          "mean": 204.9366,
+          "first_half_mean": 204.7325,
+          "last_half_mean": 205.1406,
+          "final": 198.801,
+          "min": 194.334,
+          "max": 222.357
+        },
+        "perf/max_memory_reserved_gb": {
+          "mean": 46.6131,
+          "first_half_mean": 46.6132,
+          "last_half_mean": 46.613,
+          "final": 46.613,
+          "min": 46.613,
+          "max": 46.615
+        },
+        "perf/max_memory_allocated_gb": {
+          "mean": 44.3764,
+          "first_half_mean": 44.2568,
+          "last_half_mean": 44.496,
+          "final": 44.496,
+          "min": 42.309,
+          "max": 44.496
+        }
+      },
+      "agentic_eval": {
+        "trace_records": 5,
+        "correct": 4,
+        "correct_rate": 0.8,
+        "failure_count": 1,
+        "answer_score_mean": 0.8564,
+        "by_error_type": {
+          "correct": 4,
+          "insufficient_focus_for_derived_question": 1
+        },
+        "by_question_type": {
+          "counting": 4,
+          "growth": 1
+        },
+        "by_violation": {
+          "derived_question_needs_two_or_more_focus_labels": 1
+        }
+      }
+    },
+    {
+      "name": "v20",
+      "description": "20-step growth prompt + model-only save",
+      "trace_path": "traces/mini_chartQA_toolfixed_growthprompt_modelonly_n4_20step_v20",
+      "log_path": "logs/train_mini_chartQA_toolfixed_growthprompt_modelonly_n4_20step_v20_20260507_0151.log",
+      "training": {
+        "num_steps": 20,
+        "first_step": 1,
+        "last_step": 20,
+        "reward/overall": {
+          "mean": 0.9204,
+          "first_half_mean": 0.9037,
+          "last_half_mean": 0.9371,
+          "final": 0.958,
+          "min": 0.45,
+          "max": 1.0
+        },
+        "reward/accuracy": {
+          "mean": 0.8554,
+          "first_half_mean": 0.825,
+          "last_half_mean": 0.8857,
+          "final": 0.923,
+          "min": 0.0,
+          "max": 1.0
+        },
+        "reward/tool": {
+          "mean": 1.0,
+          "first_half_mean": 1.0,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 1.0,
+          "max": 1.0
+        },
+        "reward/format": {
+          "mean": 1.0,
+          "first_half_mean": 1.0,
+          "last_half_mean": 1.0,
+          "final": 1.0,
+          "min": 1.0,
+          "max": 1.0
+        },
+        "response_length/mean": {
+          "mean": 45.6125,
+          "first_half_mean": 43.5,
+          "last_half_mean": 47.725,
+          "final": 44.5,
+          "min": 33.0,
+          "max": 102.25
+        },
+        "response_length/clip_ratio": {
+          "mean": 0.0,
+          "first_half_mean": 0.0,
+          "last_half_mean": 0.0,
+          "final": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "perf/time_per_step": {
+          "mean": 34.171,
+          "first_half_mean": 34.2452,
+          "last_half_mean": 34.0968,
+          "final": 34.68,
+          "min": 33.129,
+          "max": 36.444
+        },
+        "perf/throughput": {
+          "mean": 214.847,
+          "first_half_mean": 215.3517,
+          "last_half_mean": 214.3423,
+          "final": 208.59,
+          "min": 200.816,
+          "max": 232.154
+        },
+        "perf/max_memory_reserved_gb": {
+          "mean": 46.5702,
+          "first_half_mean": 46.5683,
+          "last_half_mean": 46.572,
+          "final": 46.572,
+          "min": 46.543,
+          "max": 46.572
+        },
+        "perf/max_memory_allocated_gb": {
+          "mean": 44.3785,
+          "first_half_mean": 44.2589,
+          "last_half_mean": 44.498,
+          "final": 44.498,
+          "min": 42.309,
+          "max": 44.498
+        }
+      },
+      "agentic_eval": {
+        "trace_records": 20,
+        "correct": 14,
+        "correct_rate": 0.7,
+        "failure_count": 6,
+        "answer_score_mean": 0.861,
+        "by_error_type": {
+          "correct": 14,
+          "insufficient_focus_for_derived_question": 3,
+          "ranking_value_instead_of_category": 1,
+          "numeric_mismatch": 2
+        },
+        "by_question_type": {
+          "counting": 8,
+          "growth": 1,
+          "ranking": 1,
+          "aggregation": 2,
+          "absolute": 4,
+          "average": 2,
+          "difference": 2
+        },
+        "by_violation": {
+          "derived_question_needs_two_or_more_focus_labels": 3,
+          "ranking_answer_should_be_category_not_number": 1
+        }
+      }
+    }
+  ]
+}

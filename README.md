@@ -47,6 +47,7 @@ v20 结论：
 - `reward/tool` 和 `reward/format` 全程保持 `1.0`，说明模型稳定学会先调用图表聚焦工具，再按指定格式输出答案。
 - `reward/overall` 后 10 步提升到 `0.9371`，优于 v19 的 `0.9305`。
 - `reward/accuracy` 后 10 步达到 `0.8857`，相比前 10 步 `0.8250` 有明显提升。
+- 相比 v19，v20 的 `reward/overall` 均值从 `0.9163` 提升到 `0.9204`，后半程从 `0.9305` 提升到 `0.9371`；`reward/accuracy` 均值从 `0.8478` 提升到 `0.8554`，后半程从 `0.8737` 提升到 `0.8857`。
 - `response_clip_ratio=0`，说明当前 response length 设置没有造成答案截断。
 - 平均 response length 约 `45.6` tokens，step 14 出现过 `102.25` 的长推理链，说明模型会在部分复杂题上生成更完整的推理。
 
@@ -216,6 +217,29 @@ python -m agentic_eval.cli \
   }
 }
 ```
+
+跨版本复现实验报告已生成在：
+
+- `docs/agentic_eval_report.md`
+- `docs/agentic_eval_summary.json`
+
+训练日志解析结果：
+
+| Exp | Steps | Overall mean | Overall last half | Accuracy mean | Accuracy last half | Tool mean | Format mean | Throughput mean |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| v18 | 5 | `0.9176` | `1.0000` | `0.8502` | `1.0000` | `1.0000` | `1.0000` | `205.90 tok/s` |
+| v19 | 20 | `0.9163` | `0.9305` | `0.8478` | `0.8737` | `1.0000` | `1.0000` | `204.94 tok/s` |
+| v20 | 20 | `0.9204` | `0.9371` | `0.8554` | `0.8857` | `1.0000` | `1.0000` | `214.85 tok/s` |
+
+Agentic Eval 归因结果：
+
+| Exp | Trace records | Correct | Correct rate | Failures | Main errors |
+| --- | ---: | ---: | ---: | ---: | --- |
+| v18 | 5 | 4 | `80.00%` | 1 | derived multi-label focus: 1 |
+| v19 | 5 | 4 | `80.00%` | 1 | derived multi-label focus: 1 |
+| v20 | 20 | 14 | `70.00%` | 6 | derived multi-label focus: 3, numeric mismatch: 2, ranking answer type: 1 |
+
+这里的 trace 数量不一致，v18/v19 各保存 5 条，v20 保存 20 条。因此 trace correct rate 是诊断分布，不是直接模型优劣对比；真正可横向比较的是同样来自训练日志的 reward/accuracy/overall 曲线。
 
 这个模块的定位是训练后自动化归因和后续 reward shaping 依据，不改变当前 v20 checkpoint 的训练结果。
 
